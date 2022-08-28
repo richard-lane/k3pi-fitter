@@ -4,6 +4,7 @@ Utilities that we might use in multiple places
 """
 import sys
 import pathlib
+from collections import namedtuple
 from typing import Tuple
 import numpy as np
 from . import definitions
@@ -11,6 +12,8 @@ from . import definitions
 sys.path.append(str(pathlib.Path(__file__).resolve().parents[2] / "k3pi_efficiency"))
 
 from lib_efficiency.metrics import _counts
+
+MixingParams = namedtuple("MixingParams", ("a", "b", "c"))
 
 
 def bin_times(

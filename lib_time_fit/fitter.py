@@ -5,7 +5,6 @@ Decay time fitters
 from typing import Tuple
 import numpy as np
 from iminuit import Minuit
-from iminuit.cost import LeastSquares
 
 from . import util, models
 
@@ -36,3 +35,27 @@ def no_mixing(ratio: np.ndarray, err: np.ndarray) -> Tuple[float, float]:
     amp_ratio_err = 0.5 * err_on_mean / np.sqrt(weighted_mean)
 
     return amp_ratio, amp_ratio_err
+
+
+def no_constraints(
+    ratio: np.ndarray,
+    errs: np.ndarray,
+    bins: np.ndarray,
+    initial_guess: util.MixingParams,
+) -> Minuit:
+    """
+    Fit WS/RS decay time ratio with no constraints on parameters
+
+    Uses models.no_constraints as the mode.
+
+    :param ratio: ratio of WS/RS decay times in each time bin
+    :param errs: error on the ratio of WS/RS decay times in each time bin
+    :param bins: bins used when calculating the ratio.
+                 Should contain each left bin edge, plus the rightmost.
+    :param initial_guess: inital guess at the parameters when fitting.
+
+    :returns: Minuit fitter after the fit
+
+
+    """
+    assert len(ratio) == len(bins) - 1
