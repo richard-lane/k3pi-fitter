@@ -10,7 +10,7 @@ from . import util, models
 
 
 def no_mixing(ratio: np.ndarray, err: np.ndarray) -> Tuple[float, float]:
-    """
+    r"""
     Find the best value that describes our dataset if we assume no mixing;
     i.e. that the ratio is described by r_D^2.
 
@@ -59,3 +59,11 @@ def no_constraints(
 
     """
     assert len(ratio) == len(bins) - 1
+
+    chi2 = models.NoConstraints(ratio, errs, bins)
+
+    minimiser = Minuit(chi2, **initial_guess._asdict())
+
+    minimiser.migrad()
+
+    return minimiser

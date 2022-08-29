@@ -4,6 +4,7 @@ Fit models
 """
 import numpy as np
 from iminuit import Minuit
+from iminuit.util import make_func_code
 
 
 def no_mixing(amplitude_ratio: float) -> float:
@@ -101,6 +102,9 @@ class NoConstraints:
         self.error = error
         self.bins = bins
 
+        # We need to tell Minuit what our function signature is explicitly
+        self.func_code = make_func_code(["a", "b", "c"])
+
         # Denominator (RS) integral doesn't depend on the params
         # so we only need to evaluate it once
         self._expected_rs_integral = rs_integral(bins)
@@ -117,6 +121,8 @@ class NoConstraints:
         Evaluate the chi2 given our parameters
 
         """
-        expected_ratio = self._expected_ws_integral(a, b, c) / self._expected_rs_integral
+        expected_ratio = (
+            self._expected_ws_integral(a, b, c) / self._expected_rs_integral
+        )
 
-        return np.sum((self.ratio - expected_ratio / self.error) ** 2)
+        return np.sum(((self.ratio - expected_ratio) / self.error) ** 2)
