@@ -9,6 +9,21 @@ from iminuit import Minuit
 from . import util, models
 
 
+def weighted_mean(points: np.ndarray, errors: np.ndarray) -> Tuple[float, float]:
+    """
+    Weighted mean and its error of some points
+
+    :param points: values
+    :param errors: errors on the values
+    :returns: the mean
+    :returns: error on the mean
+
+    """
+    weights = 1 / errors**2
+
+    return np.average(points, weights=weights), 1 / np.sum(weights)
+
+
 def no_mixing(ratio: np.ndarray, err: np.ndarray) -> Tuple[float, float]:
     r"""
     Find the best value that describes our dataset if we assume no mixing;
@@ -26,13 +41,10 @@ def no_mixing(ratio: np.ndarray, err: np.ndarray) -> Tuple[float, float]:
     """
     assert len(ratio) == len(err)
 
-    weights = 1 / err ** 2
+    mean, err_on_mean = weighted_mean(ratio, err)
 
-    weighted_mean = np.average(ratio, weights=weights)
-    err_on_mean = 1 / np.sum(weights)
-
-    amp_ratio = np.sqrt(weighted_mean)
-    amp_ratio_err = 0.5 * err_on_mean / np.sqrt(weighted_mean)
+    amp_ratio = np.sqrt(mean)
+    amp_ratio_err = 0.5 * err_on_mean / np.sqrt(mean)
 
     return amp_ratio, amp_ratio_err
 

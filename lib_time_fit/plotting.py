@@ -5,7 +5,27 @@ Utils for plotting
 from typing import Tuple
 import numpy as np
 import matplotlib.pyplot as plt
+
 from . import models
+
+
+def no_mixing(
+    axis: plt.Axes,
+    val: float,
+    fmt: str = "r--",
+    label: str = None,
+) -> None:
+    """
+    Plot no mixing "fit" on an axis - i.e. a horizontal line at val
+
+    :param axis: axis to plot on
+    :param ratios:
+    :param fmt: format string for the plot
+    :param label: label to add to legend
+
+    """
+    pts = np.linspace(*axis.get_xlim())
+    axis.plot(pts, val * np.ones_like(pts), fmt, label=label)
 
 
 def no_constraints(
