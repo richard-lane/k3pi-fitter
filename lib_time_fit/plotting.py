@@ -6,7 +6,7 @@ from typing import Tuple
 import numpy as np
 import matplotlib.pyplot as plt
 
-from . import models
+from . import models, util
 
 
 def no_mixing(
@@ -46,3 +46,23 @@ def no_constraints(
     """
     pts = np.linspace(*axis.get_xlim())
     axis.plot(pts, models.no_constraints(pts, *params), fmt, label=label)
+
+
+def constraints(
+    axis: plt.Axes,
+    params: util.ConstraintParams
+    fmt: str = "r--",
+    label: str = None,
+) -> None:
+    """
+    Plot mixing fit on an axis.
+    Uses the existing axis limits as the plotting range
+
+    :param axis: axis to plot on
+    :param params: parameters from the fit
+    :param fmt: format string for the plot
+    :param label: label to add to legend
+
+    """
+    pts = np.linspace(*axis.get_xlim())
+    axis.plot(pts, models.constraints(pts, params), fmt, label=label)

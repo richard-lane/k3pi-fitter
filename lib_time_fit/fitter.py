@@ -19,7 +19,7 @@ def weighted_mean(points: np.ndarray, errors: np.ndarray) -> Tuple[float, float]
     :returns: error on the mean
 
     """
-    weights = 1 / errors**2
+    weights = 1 / errors ** 2
 
     return np.average(points, weights=weights), 1 / np.sum(weights)
 
@@ -58,13 +58,52 @@ def no_constraints(
     """
     Fit WS/RS decay time ratio with no constraints on parameters
 
-    Uses models.no_constraints as the mode.
+    Uses models.no_constraints as the model.
 
     :param ratio: ratio of WS/RS decay times in each time bin
     :param errs: error on the ratio of WS/RS decay times in each time bin
     :param bins: bins used when calculating the ratio.
                  Should contain each left bin edge, plus the rightmost.
     :param initial_guess: inital guess at the parameters when fitting.
+
+    :returns: Minuit fitter after the fit
+
+
+    """
+    assert len(ratio) == len(bins) - 1
+
+    chi2 = models.NoConstraints(ratio, errs, bins)
+
+    minimiser = Minuit(chi2, **initial_guess._asdict())
+
+    minimiser.migrad()
+
+    return minimiser
+
+
+def constraints(
+    ratio: np.ndarray,
+    errs: np.ndarray,
+    bins: np.ndarray,
+    initial_guess: util.ConstraintParams,
+    x_y_widths: Tuple[float, float],
+    x_y_correlation: float,
+) -> Minuit:
+    """
+    Fit WS/RS decay time ratio
+    with Gaussian constraints on the mixing parameters.
+
+    Uses models.constraints as the model.
+    Gaussian constraint uses the initial values of x, y as the
+    mean and the provided widths/correlation.
+
+    :param ratio: ratio of WS/RS decay times in each time bin
+    :param errs: error on the ratio of WS/RS decay times in each time bin
+    :param bins: bins used when calculating the ratio.
+                 Should contain each left bin edge, plus the rightmost.
+    :param initial_guess: inital guess at the parameters when fitting.
+    :param x_y_widths: tuple of x, y widths to use in the Gaussian constraint
+    :param x_y_correlation: measured correlation between x and y
 
     :returns: Minuit fitter after the fit
 

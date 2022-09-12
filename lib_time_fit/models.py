@@ -2,9 +2,23 @@
 Fit models
 
 """
+from typing import Tuple
 import numpy as np
 from iminuit import Minuit
 from iminuit.util import make_func_code
+from .util import ConstraintParams, MixingParams
+
+
+def abc(params: ConstraintParams) -> MixingParams:
+    """
+    Find a, b, c params from x, y, etc.
+
+    """
+    return MixingParams(
+        params.rD,
+        params.x * params.im_z + params.y * params.re_z,
+        0.25 * (params.x ** 2 + params.y ** 2),
+    )
 
 
 def no_mixing(amplitude_ratio: float) -> float:
@@ -38,6 +52,27 @@ def no_constraints(times: np.ndarray, a: float, b: float, c: float) -> np.ndarra
 
     """
     return a ** 2 + a * b * times + c * times ** 2
+
+
+def constraints(times: np.ndarray, params: ConstraintParams) -> np.ndarray:
+    """
+    Model for WS/RS time ratio; allows D0 mixing,
+    constraining the mixing parameters to the provided values.
+
+    Low time/small mixing approximation
+
+    ratio = rD^2 + rD(xIm(Z) + yRe(Z))t + 0.25(x^2 + y^2)t^2
+
+    :param times: times to evaluate the ratio at, in lifetimes
+    :param params: mixing parameters
+
+    :returns: ratio at each time
+
+    """
+    return no_constraints(
+        times,
+        *abc(params),
+    )
 
 
 def rs_integral(bins: np.ndarray) -> np.ndarray:
@@ -126,3 +161,82 @@ class NoConstraints:
         )
 
         return np.sum(((self.ratio - expected_ratio) / self.error) ** 2)
+
+
+class Constraints:
+    """
+    Cost function for the fitter with Gaussian constraints
+    on mixing parameters x and y
+
+    """
+
+    errordef = Minuit.LEAST_SQUARES
+
+    def __init__(
+        self,
+        ratio: np.ndarray,
+        error: np.ndarray,
+        bins: np.ndarray,
+        x_y_means: Tuple[float, float],
+        x_y_widths: Tuple[float, float],
+        x_y_correlation: float,
+    ):
+        """
+        Set parameters for doing a fit without constraints
+
+        :param ratio: WS/RS ratio
+        :param error: error in ratio
+        :param bins: bins used when finding the ratio
+        :param x_y_means: mean for Gaussian constraint
+        :param x_y_widths: widths for Gaussian constraint
+        :param x_y_correlation: correlation for Gaussian constraint
+
+        """
+        self.ratio = ratio
+        self.error = error
+        self.bins = bins
+
+        # We need to tell Minuit what our function signature is explicitly
+        self.func_code = make_func_code(["r_d", "x", "y", "im_z", "re_z"])
+
+        # Denominator (RS) integral doesn't depend on the params
+        # so we only need to evaluate it once
+        self._expected_rs_integral = rs_integral(bins)
+
+        # Similarly we can pre-compute two of the terms needed
+        # for the constraint term
+        self._x_width, self._y_width = x_y_widths
+        self._x_mean, self._y_mean = x_y_means
+        self._constraint_scale = 1 / (1 - x_y_correlation ** 2)
+        self._constraint_cross_term = (
+            2 * x_y_correlation / (self._x_width * self._y_width)
+        )
+
+    def _expected_ws_integral(self, params: ConstraintParams) -> np.ndarray:
+        """
+        Given our parameters, find the expected WS integral
+
+        """
+        return ws_integral(self.bins, *abc(params))
+
+    def __call__(self, r_d: float, x: float, y: float, im_z: float, re_z: float):
+        """
+        Evaluate the chi2 given our parameters
+
+        """
+        expected_ratio = (
+            self._expected_ws_integral(ConstraintParams(r_d, x, y, im_z, re_z))
+            / self._expected_rs_integral
+        )
+
+        chi2 = np.sum(((self.ratio - expected_ratio) / self.error) ** 2)
+
+        # Also need a term for the constraint
+        dx, dy = x - self._x_mean, y - self._y_mean
+        constraint = self._constraint_scale * (
+            (dx / self._x_width) ** 2
+            + (dy / self._y_width) ** 2
+            - self._constraint_cross_term * dx * dy
+        )
+
+        return chi2 + constraint

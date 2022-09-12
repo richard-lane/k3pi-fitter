@@ -14,6 +14,7 @@ sys.path.append(str(pathlib.Path(__file__).resolve().parents[2] / "k3pi_efficien
 from lib_efficiency.metrics import _counts
 
 MixingParams = namedtuple("MixingParams", ("a", "b", "c"))
+ConstraintParams = namedtuple("ConstraintParams", ("rD", "x", "y", "im_z", "re_z"))
 
 
 def bin_times(
