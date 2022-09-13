@@ -109,6 +109,7 @@ def constraints(
 
 
     """
+    # TODO this should really not fit to both parts of Z
     assert len(ratio) == len(bins) - 1
 
     chi2 = models.Constraints(
