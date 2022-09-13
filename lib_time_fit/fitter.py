@@ -111,9 +111,20 @@ def constraints(
     """
     assert len(ratio) == len(bins) - 1
 
-    chi2 = models.NoConstraints(ratio, errs, bins)
+    chi2 = models.Constraints(
+        ratio,
+        errs,
+        bins,
+        (initial_guess.x, initial_guess.y),
+        x_y_widths,
+        x_y_correlation,
+    )
 
-    minimiser = Minuit(chi2, **initial_guess._asdict())
+    # Have to make the param names consistent
+    starting_vals = initial_guess._asdict()
+    starting_vals["r_d"] = starting_vals.pop("rD")
+
+    minimiser = Minuit(chi2, **starting_vals)
 
     minimiser.migrad()
 

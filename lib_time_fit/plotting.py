@@ -2,7 +2,6 @@
 Utils for plotting
 
 """
-from typing import Tuple
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -30,7 +29,7 @@ def no_mixing(
 
 def no_constraints(
     axis: plt.Axes,
-    params: Tuple[float, float, float],
+    params: util.MixingParams,
     fmt: str = "r--",
     label: str = None,
 ) -> None:
@@ -50,7 +49,7 @@ def no_constraints(
 
 def constraints(
     axis: plt.Axes,
-    params: util.ConstraintParams
+    params: util.ConstraintParams,
     fmt: str = "r--",
     label: str = None,
 ) -> None:
