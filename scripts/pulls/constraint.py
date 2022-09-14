@@ -57,7 +57,7 @@ def _pull(
     domain = (3, 10)
     bins = np.linspace(*domain, 30)
 
-    these_params = util.ConstraintParams(params.rD, *xy_vals, params.im_z, params.re_z)
+    these_params = util.ConstraintParams(params.r_d, *xy_vals, params.b)
 
     rs_points = common.gen_rs(rng, n_rs, domain)
     ws_points = common.gen_ws(rng, n_rs, domain, models.abc(these_params), plot=False)
@@ -82,15 +82,14 @@ def _plot_pull(pulls):
     Plot + show pulls
 
     """
-    fig, ax = plt.subplots(2, 3, figsize=(9, 3))
+    fig, ax = plt.subplots(2, 2, figsize=(9, 3))
     bins = np.linspace(-3, 3, 50)
     ax[0, 0].hist(pulls[0], bins=bins)
     ax[0, 1].hist(pulls[1], bins=bins)
-    ax[0, 2].hist(pulls[2], bins=bins)
-    ax[1, 0].hist(pulls[3], bins=bins)
-    ax[1, 1].hist(pulls[4], bins=bins)
+    ax[1, 0].hist(pulls[2], bins=bins)
+    ax[1, 1].hist(pulls[3], bins=bins)
 
-    params = r"$r_D$", "$x$", "$y$", "$Im(Z)$", "$Re(Z)$"
+    params = r"$r_D$", "$x$", "$y$", "$b$"
 
     for pull, axis, label in zip(pulls, ax.ravel(), params):
         axis.set_title(f"{np.mean(pull):.4f}" + r"$\pm$" + f"{np.std(pull):.4f}")
@@ -108,11 +107,11 @@ def main():
     rng = np.random.default_rng()
 
     n_rs = 6_000_00
-    params = util.ConstraintParams(1.0, 0.06, 0.03, 0.8, 0.8)
+    params = util.ConstraintParams(1.0, 0.06, 0.03, 0.01)
 
     # Generate some random values of X and Y to use
     widths = np.array([0.01, 0.01])
-    correlation = 0.99
+    correlation = 0.1
     n_experiments = 100
 
     corr = np.array([[1, correlation], [correlation, 1.0]])
@@ -124,17 +123,16 @@ def main():
     )
 
     # Do a fit
-    pulls = np.ones((5, n_experiments)) * np.nan
+    pulls = np.ones((4, n_experiments)) * np.nan
     for i in tqdm(range(n_experiments)):
-        r_pull, x_pull, y_pull, im_pull, re_pull = _pull(
+        r_pull, x_pull, y_pull, b_pull = _pull(
             rng, params, n_rs, xy_vals[i], (*widths, correlation), plot=False
         )
 
         pulls[0, i] = r_pull
         pulls[1, i] = x_pull
         pulls[2, i] = y_pull
-        pulls[3, i] = im_pull
-        pulls[4, i] = re_pull
+        pulls[3, i] = b_pull
 
     _plot_pull(pulls)
 

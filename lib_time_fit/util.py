@@ -13,8 +13,11 @@ sys.path.append(str(pathlib.Path(__file__).resolve().parents[2] / "k3pi_efficien
 
 from lib_efficiency.metrics import _counts
 
+# No constraints
 MixingParams = namedtuple("MixingParams", ("a", "b", "c"))
-ConstraintParams = namedtuple("ConstraintParams", ("rD", "x", "y", "im_z", "re_z"))
+
+# Gaussian constraints on x and y
+ConstraintParams = namedtuple("ConstraintParams", ("r_d", "b", "x", "y"))
 
 
 def bin_times(

@@ -22,7 +22,7 @@ def _gen(
 
     """
     n_rs = 5000000
-    gen = np.random.default_rng(seed=0)
+    gen = np.random.default_rng()
 
     rs_t = common.gen_rs(gen, n_rs, domain)
     ws_t = common.gen_ws(gen, n_rs, domain, abc)
@@ -48,7 +48,7 @@ def main():
 
     """
     # Define our fit parameters
-    params = util.ConstraintParams(1.0, 0.06, 0.03, 0.8, 0.8)
+    params = util.ConstraintParams(1.0, 0.06, 0.03, 0.01)
     # Find the a/b/c parameters from these
     abc = models.abc(params)
 

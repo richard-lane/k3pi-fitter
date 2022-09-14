@@ -109,7 +109,6 @@ def constraints(
 
 
     """
-    # TODO this should really not fit to both parts of Z
     assert len(ratio) == len(bins) - 1
 
     chi2 = models.Constraints(
@@ -122,10 +121,7 @@ def constraints(
     )
 
     # Have to make the param names consistent
-    starting_vals = initial_guess._asdict()
-    starting_vals["r_d"] = starting_vals.pop("rD")
-
-    minimiser = Minuit(chi2, **starting_vals)
+    minimiser = Minuit(chi2, **initial_guess._asdict())
 
     minimiser.migrad()
 

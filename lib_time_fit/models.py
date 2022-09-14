@@ -15,8 +15,8 @@ def abc(params: ConstraintParams) -> MixingParams:
 
     """
     return MixingParams(
-        params.rD,
-        params.x * params.im_z + params.y * params.re_z,
+        params.r_d,
+        params.r_d * params.b,
         0.25 * (params.x ** 2 + params.y ** 2),
     )
 
@@ -61,7 +61,7 @@ def constraints(times: np.ndarray, params: ConstraintParams) -> np.ndarray:
 
     Low time/small mixing approximation
 
-    ratio = rD^2 + rD(xIm(Z) + yRe(Z))t + 0.25(x^2 + y^2)t^2
+    ratio = r_d^2 + r_d * b * t + 0.25(x^2 + y^2)t^2
 
     :param times: times to evaluate the ratio at, in lifetimes
     :param params: mixing parameters
@@ -197,7 +197,7 @@ class Constraints:
         self.bins = bins
 
         # We need to tell Minuit what our function signature is explicitly
-        self.func_code = make_func_code(["r_d", "x", "y", "im_z", "re_z"])
+        self.func_code = make_func_code(["r_d", "x", "y", "b"])
 
         # Denominator (RS) integral doesn't depend on the params
         # so we only need to evaluate it once
@@ -219,13 +219,13 @@ class Constraints:
         """
         return ws_integral(self.bins, *abc(params))
 
-    def __call__(self, r_d: float, x: float, y: float, im_z: float, re_z: float):
+    def __call__(self, r_d: float, x: float, y: float, b: float):
         """
         Evaluate the chi2 given our parameters
 
         """
         expected_ratio = (
-            self._expected_ws_integral(ConstraintParams(r_d, x, y, im_z, re_z))
+            self._expected_ws_integral(ConstraintParams(r_d, x, y, b))
             / self._expected_rs_integral
         )
 
