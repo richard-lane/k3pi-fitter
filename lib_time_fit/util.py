@@ -19,6 +19,9 @@ MixingParams = namedtuple("MixingParams", ("a", "b", "c"))
 # Gaussian constraints on x and y
 ConstraintParams = namedtuple("ConstraintParams", ("r_d", "b", "x", "y"))
 
+# All params, for doing the scan
+ScanParams = namedtuple("ScanParams", ("r_d", "x", "y", "re_z", "im_z"))
+
 
 def bin_times(
     times: np.ndarray,

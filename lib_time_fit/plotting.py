@@ -65,3 +65,23 @@ def constraints(
     """
     pts = np.linspace(*axis.get_xlim())
     axis.plot(pts, models.constraints(pts, params), fmt, label=label)
+
+
+def scan_fit(
+    axis: plt.Axes,
+    params: util.ScanParams,
+    fmt: str = "r--",
+    label: str = None,
+) -> None:
+    """
+    Plot scan fit on an axis.
+    Uses the existing axis limits as the plotting range
+
+    :param axis: axis to plot on
+    :param params: parameters from the fit
+    :param fmt: format string for the plot
+    :param label: label to add to legend
+
+    """
+    pts = np.linspace(*axis.get_xlim())
+    axis.plot(pts, models.scan(pts, params), fmt, label=label)

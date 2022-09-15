@@ -48,13 +48,13 @@ def main():
 
     """
     # Define our fit parameters
-    params = util.ConstraintParams(1.0, 0.06, 0.03, 0.01)
-    # Find the a/b/c parameters from these
-    abc = models.abc(params)
+    params = util.ScanParams(1.0, 0.06, 0.03, 0.5, 0.5)
+    constraint_params = models.scan2constraint(params)
+    abc_params = models.abc(constraint_params)
 
     # Generate some RS and WS times
     domain = 0.0, 8.0
-    rs_t, ws_t = _gen(domain, abc)
+    rs_t, ws_t = _gen(domain, abc_params)
 
     # Take their ratio in bins
     bins = np.linspace(*domain, 30)
@@ -64,19 +64,21 @@ def main():
     ratio, err = util.ratio_err(ws_count, rs_count, ws_err, rs_err)
 
     # Perform fits to them
-    no_constraint = fitter.no_constraints(ratio, err, bins, abc)
+    no_constraint = fitter.no_constraints(ratio, err, bins, abc_params)
 
     # Need x/y widths and correlations for the Gaussian constraint fit
     width = 0.01
     correlation = 0
     constraints = fitter.constraints(
-        ratio, err, bins, params, (width, width), correlation
+        ratio, err, bins, constraint_params, (width, width), correlation
     )
+
+    scan = fitter.scan_fit(ratio, err, bins, params, (width, width), correlation)
 
     # Plot fits
     fig, ax = plt.subplots()
     _plot_ratio(ax, bins, ratio, err)
-    plotting.no_constraints(ax, abc, fmt="k-", label="True")
+    plotting.no_constraints(ax, abc_params, fmt="k-", label="True")
     plotting.no_constraints(
         ax, no_constraint.values, fmt="r--", label="No Constraint Fit"
     )
@@ -86,6 +88,13 @@ def main():
         util.ConstraintParams(*constraints.values),
         fmt="b--",
         label="Constrained Fit",
+    )
+
+    plotting.scan_fit(
+        ax,
+        util.ScanParams(*scan.values, params.re_z, params.im_z),
+        fmt="g--",
+        label="Scan Fit",
     )
 
     ax.legend()

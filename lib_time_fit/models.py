@@ -6,7 +6,7 @@ from typing import Tuple
 import numpy as np
 from iminuit import Minuit
 from iminuit.util import make_func_code
-from .util import ConstraintParams, MixingParams
+from .util import ConstraintParams, MixingParams, ScanParams
 
 
 def abc(params: ConstraintParams) -> MixingParams:
@@ -17,8 +17,29 @@ def abc(params: ConstraintParams) -> MixingParams:
     return MixingParams(
         params.r_d,
         params.r_d * params.b,
-        0.25 * (params.x ** 2 + params.y ** 2),
+        0.25 * (params.x**2 + params.y**2),
     )
+
+
+def scan2constraint(params: ScanParams) -> ConstraintParams:
+    """
+    Convert scan params to constraint params
+
+    """
+    return ConstraintParams(
+        params.r_d,
+        (params.x * params.im_z + params.y * params.re_z),
+        params.x,
+        params.y,
+    )
+
+
+def abc_scan(params: ScanParams) -> MixingParams:
+    """
+    Find a, b, c params from x, y, Z etc.
+
+    """
+    return abc(scan2constraint(params))
 
 
 def no_mixing(amplitude_ratio: float) -> float:
@@ -32,7 +53,7 @@ def no_mixing(amplitude_ratio: float) -> float:
 
     """
 
-    return amplitude_ratio ** 2
+    return amplitude_ratio**2
 
 
 def no_constraints(times: np.ndarray, a: float, b: float, c: float) -> np.ndarray:
@@ -51,7 +72,7 @@ def no_constraints(times: np.ndarray, a: float, b: float, c: float) -> np.ndarra
     :returns: ratio at each time
 
     """
-    return a ** 2 + a * b * times + c * times ** 2
+    return a**2 + a * b * times + c * times**2
 
 
 def constraints(times: np.ndarray, params: ConstraintParams) -> np.ndarray:
@@ -69,10 +90,25 @@ def constraints(times: np.ndarray, params: ConstraintParams) -> np.ndarray:
     :returns: ratio at each time
 
     """
-    return no_constraints(
-        times,
-        *abc(params),
-    )
+    return no_constraints(times, *abc(params))
+
+
+def scan(times: np.ndarray, params: ScanParams) -> np.ndarray:
+    """
+    Model for WS/RS time ratio; allows D0 mixing,
+    constraining the mixing parameters to the provided values.
+
+    Low time/small mixing approximation
+
+    ratio = r_d^2 + r_d * (xImZ + yReZ) * t + 0.25(x^2 + y^2)t^2
+
+    :param times: times to evaluate the ratio at, in lifetimes
+    :param params: mixing parameters
+
+    :returns: ratio at each time
+
+    """
+    return no_constraints(times, *abc_scan(params))
 
 
 def rs_integral(bins: np.ndarray) -> np.ndarray:
@@ -96,7 +132,7 @@ def _ws_integral_dispatcher(
 
     """
     return -np.exp(-times) * (
-        (a ** 2) + a * b * (times + 1) + (times * (times + 2) + 2) * c
+        (a**2) + a * b * (times + 1) + (times * (times + 2) + 2) * c
     )
 
 
@@ -207,12 +243,12 @@ class Constraints:
         # for the constraint term
         self._x_width, self._y_width = x_y_widths
         self._x_mean, self._y_mean = x_y_means
-        self._constraint_scale = 1 / (1 - x_y_correlation ** 2)
+        self._constraint_scale = 1 / (1 - x_y_correlation**2)
         self._constraint_cross_term = (
             2 * x_y_correlation / (self._x_width * self._y_width)
         )
 
-    def _expected_ws_integral(self, params: ConstraintParams) -> np.ndarray:
+    def _expected_ws_integral(self, params: ScanParams) -> np.ndarray:
         """
         Given our parameters, find the expected WS integral
 
@@ -226,6 +262,89 @@ class Constraints:
         """
         expected_ratio = (
             self._expected_ws_integral(ConstraintParams(r_d, x, y, b))
+            / self._expected_rs_integral
+        )
+
+        chi2 = np.sum(((self.ratio - expected_ratio) / self.error) ** 2)
+
+        # Also need a term for the constraint
+        dx, dy = x - self._x_mean, y - self._y_mean
+        constraint = self._constraint_scale * (
+            (dx / self._x_width) ** 2
+            + (dy / self._y_width) ** 2
+            - self._constraint_cross_term * dx * dy
+        )
+
+        return chi2 + constraint
+
+
+class Scan:
+    """
+    Cost function for the fitter with
+    fixed Z and Gaussian constraints on x and y
+
+    """
+
+    # TODO make this share implementation with the constrained fitter
+    errordef = Minuit.LEAST_SQUARES
+
+    def __init__(
+        self,
+        ratio: np.ndarray,
+        error: np.ndarray,
+        bins: np.ndarray,
+        x_y_means: Tuple[float, float],
+        x_y_widths: Tuple[float, float],
+        x_y_correlation: float,
+        z: Tuple[float, float],
+    ):
+        """
+        Set parameters for doing a fit without constraints
+
+        :param ratio: WS/RS ratio
+        :param error: error in ratio
+        :param bins: bins used when finding the ratio
+        :param x_y_means: mean for Gaussian constraint
+        :param x_y_widths: widths for Gaussian constraint
+        :param x_y_correlation: correlation for Gaussian constraint
+        :param z: (reZ, imZ) that will be used for this fit
+
+        """
+        self.ratio = ratio
+        self.error = error
+        self.bins = bins
+        self.re_z, self.im_z = z
+
+        # We need to tell Minuit what our function signature is explicitly
+        self.func_code = make_func_code(["r_d", "x", "y"])
+
+        # Denominator (RS) integral doesn't depend on the params
+        # so we only need to evaluate it once
+        self._expected_rs_integral = rs_integral(bins)
+
+        # Similarly we can pre-compute two of the terms needed
+        # for the constraint term
+        self._x_width, self._y_width = x_y_widths
+        self._x_mean, self._y_mean = x_y_means
+        self._constraint_scale = 1 / (1 - x_y_correlation**2)
+        self._constraint_cross_term = (
+            2 * x_y_correlation / (self._x_width * self._y_width)
+        )
+
+    def _expected_ws_integral(self, params: ScanParams) -> np.ndarray:
+        """
+        Given our parameters, find the expected WS integral
+
+        """
+        return ws_integral(self.bins, *abc_scan(params))
+
+    def __call__(self, r_d: float, x: float, y: float):
+        """
+        Evaluate the chi2 given our parameters
+
+        """
+        expected_ratio = (
+            self._expected_ws_integral(ScanParams(r_d, x, y, self.re_z, self.im_z))
             / self._expected_rs_integral
         )
 
