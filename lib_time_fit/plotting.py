@@ -90,16 +90,14 @@ def scan_fit(
 
 
 def scan(
+    ax: plt.Axes,
     re_z: np.ndarray,
     im_z: np.ndarray,
     chi2: np.ndarray,
     levels=None,
-) -> Tuple[plt.Figure, plt.Axes]:
+) -> QuadContourSet:
     """
-    Plot a scan
+    Plot a scan- returns the contour set with the specified levels (default levels otherwise)
 
     """
-    fig, ax = plt.subplots()
-    contours = ax.contourf(*np.meshgrid(re_z, im_z), chi2, levels=levels)
-
-    return fig, ax, contours
+    return ax.contourf(*np.meshgrid(re_z, im_z), chi2, levels=levels)

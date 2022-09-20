@@ -8,6 +8,7 @@ import pathlib
 from typing import Tuple
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.contour import QuadContourSet
 from tqdm import tqdm
 from pulls import common
 
@@ -38,7 +39,7 @@ def _ratio_err() -> Tuple[np.ndarray, np.ndarray]:
 
     """
     # Define our fit parameters
-    z = (0.8, -0.5)
+    z = (0.75, -0.25)
     params = util.ScanParams(1.0, 0.06, 0.03, *z)
 
     # Generate some RS and WS times
@@ -51,6 +52,67 @@ def _ratio_err() -> Tuple[np.ndarray, np.ndarray]:
     ws_count, ws_err = util.bin_times(ws_t, bins=bins)
 
     return (*util.ratio_err(ws_count, rs_count, ws_err, rs_err), params, bins)
+
+
+def _cartesian_plot(
+    ax: plt.Axes,
+    allowed_rez: np.ndarray,
+    allowed_imz: np.ndarray,
+    chi2s: np.ndarray,
+    n_levels: int,
+    true_z: Tuple[float, float],
+) -> QuadContourSet:
+    """
+    Plot the Cartesian scan
+
+    """
+    contours = plotting.scan(
+        ax,
+        allowed_rez,
+        allowed_imz,
+        chi2s,
+        levels=np.arange(n_levels),
+    )
+    ax.plot(*true_z, "y*")
+
+    ax.set_xlabel(r"Re(Z)")
+    ax.set_ylabel(r"Im(Z)")
+    ax.add_patch(plt.Circle((0, 0), 1.0, color="k", fill=False))
+    ax.set_title("Cartesian")
+
+    return contours
+
+
+def _polar_plot(
+    ax: plt.Axes,
+    allowed_rez: np.ndarray,
+    allowed_imz: np.ndarray,
+    chi2s: np.ndarray,
+    n_levels: int,
+    true_z: Tuple[float, float],
+):
+    """
+    Polar plot on an axis
+
+    Pass args in in Cartesian co-ords, though
+
+    """
+    # Convert to polar
+    xx, yy = np.meshgrid(allowed_rez, allowed_imz)
+    mag = np.sqrt(xx ** 2 + yy ** 2)
+    phase = np.arctan2(yy, xx)
+
+    ax.contourf(mag, phase, chi2s, levels=np.arange(n_levels))
+    ax.plot(
+        [np.sqrt(true_z[0] ** 2 + true_z[1] ** 2)],
+        [np.arctan2(true_z[1], true_z[0])],
+        "y*",
+    )
+
+    ax.set_xlabel(r"$|Z|$")
+    ax.set_ylabel(r"arg(Z)")
+    ax.set_title("Polar")
+    ax.plot([1, 1], ax.get_ylim(), "k-")
 
 
 def main():
@@ -66,7 +128,7 @@ def main():
     correlation = 0.5
 
     chi2s = []
-    n_re, n_im = 100, 100
+    n_re, n_im = 75, 76
     allowed_rez = np.linspace(-1, 1, n_re)
     allowed_imz = np.linspace(-1, 1, n_im)
 
@@ -87,19 +149,21 @@ def main():
     chi2s -= np.min(chi2s)
     chi2s = np.sqrt(chi2s)
 
-    fig, ax, contours = plotting.scan(
-        allowed_rez, allowed_imz, chi2s, levels=[0, 1, 2, 3, 4, 5, 6]
+    fig, ax = plt.subplots(1, 2, figsize=(10, 5))
+    n_contours = 7
+    contours = _cartesian_plot(
+        ax[0], allowed_rez, allowed_imz, chi2s, n_contours, (params.re_z, params.im_z)
     )
-    fig.colorbar(contours)
-    ax.plot([params.re_z], [params.im_z], "y*")
-
-    ax.set_xlabel(r"Re(Z)")
-    ax.set_ylabel(r"Im(Z)")
-    ax.add_patch(plt.Circle((0, 0), 1.0, color="k", fill=False))
-
-    fig.axes[-1].set_title(r"$\sigma$")
-
+    _polar_plot(
+        ax[1], allowed_rez, allowed_imz, chi2s, n_contours, (params.re_z, params.im_z)
+    )
     fig.tight_layout()
+
+    fig.subplots_adjust(right=0.8)
+    cbar_ax = fig.add_axes([0.85, 0.1, 0.05, 0.8])
+    fig.colorbar(contours, cax=cbar_ax)
+    cbar_ax.set_title(r"$\sigma$")
+
     plt.show()
 
 
