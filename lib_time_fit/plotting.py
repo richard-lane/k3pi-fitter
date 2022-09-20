@@ -2,8 +2,10 @@
 Utils for plotting
 
 """
+from typing import Tuple
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.contour import QuadContourSet
 
 from . import models, util
 
@@ -72,7 +74,7 @@ def scan_fit(
     params: util.ScanParams,
     fmt: str = "r--",
     label: str = None,
-) -> None:
+) -> Tuple[plt.Figure, plt.Axes, QuadContourSet]:
     """
     Plot scan fit on an axis.
     Uses the existing axis limits as the plotting range
@@ -85,3 +87,19 @@ def scan_fit(
     """
     pts = np.linspace(*axis.get_xlim())
     axis.plot(pts, models.scan(pts, params), fmt, label=label)
+
+
+def scan(
+    re_z: np.ndarray,
+    im_z: np.ndarray,
+    chi2: np.ndarray,
+    levels=None,
+) -> Tuple[plt.Figure, plt.Axes]:
+    """
+    Plot a scan
+
+    """
+    fig, ax = plt.subplots()
+    contours = ax.contourf(*np.meshgrid(re_z, im_z), chi2, levels=levels)
+
+    return fig, ax, contours

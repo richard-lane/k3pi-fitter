@@ -1,0 +1,107 @@
+"""
+Generate some toy data, perform fits to it fixing Z
+to different values
+
+"""
+import sys
+import pathlib
+from typing import Tuple
+import numpy as np
+import matplotlib.pyplot as plt
+from tqdm import tqdm
+from pulls import common
+
+sys.path.append(str(pathlib.Path(__file__).resolve().parents[1]))
+
+from lib_time_fit import util, models, fitter, plotting
+
+
+def _gen(
+    domain: Tuple[float, float], params: util.ScanParams
+) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    Generate some RS and WS times
+
+    """
+    n_rs = 2000000
+    gen = np.random.default_rng()
+
+    rs_t = common.gen_rs(gen, n_rs, domain)
+    ws_t = common.gen_ws(gen, n_rs, domain, models.abc_scan(params))
+
+    return rs_t, ws_t
+
+
+def _ratio_err() -> Tuple[np.ndarray, np.ndarray]:
+    """
+    Make some times, bin them, return their ratio and error
+
+    """
+    # Define our fit parameters
+    z = (0.8, -0.5)
+    params = util.ScanParams(1.0, 0.06, 0.03, *z)
+
+    # Generate some RS and WS times
+    domain = 0.0, 8.0
+    rs_t, ws_t = _gen(domain, params)
+
+    # Take their ratio in bins
+    bins = np.linspace(*domain, 20)
+    rs_count, rs_err = util.bin_times(rs_t, bins=bins)
+    ws_count, ws_err = util.bin_times(ws_t, bins=bins)
+
+    return (*util.ratio_err(ws_count, rs_count, ws_err, rs_err), params, bins)
+
+
+def main():
+    """
+    Generate toy data, perform fits, show plots
+
+    """
+    # ratio we'll fit to
+    ratio, err, params, bins = _ratio_err()
+
+    # Need x/y widths and correlations for the Gaussian constraint
+    width = 0.005
+    correlation = 0.5
+
+    chi2s = []
+    n_re, n_im = 100, 100
+    allowed_rez = np.linspace(-1, 1, n_re)
+    allowed_imz = np.linspace(-1, 1, n_im)
+
+    chi2s = np.ones((n_im, n_re)) * np.inf
+    with tqdm(total=n_re * n_im) as pbar:
+        for i, re_z in enumerate(allowed_rez):
+            for j, im_z in enumerate(allowed_imz):
+                these_params = util.ScanParams(
+                    params.r_d, params.x, params.y, re_z, im_z
+                )
+                scan = fitter.scan_fit(
+                    ratio, err, bins, these_params, (width, width), correlation
+                )
+
+                chi2s[j, i] = scan.fval
+                pbar.update(1)
+
+    chi2s -= np.min(chi2s)
+    chi2s = np.sqrt(chi2s)
+
+    fig, ax, contours = plotting.scan(
+        allowed_rez, allowed_imz, chi2s, levels=[0, 1, 2, 3, 4, 5, 6]
+    )
+    fig.colorbar(contours)
+    ax.plot([params.re_z], [params.im_z], "y*")
+
+    ax.set_xlabel(r"Re(Z)")
+    ax.set_ylabel(r"Im(Z)")
+    ax.add_patch(plt.Circle((0, 0), 1.0, color="k", fill=False))
+
+    fig.axes[-1].set_title(r"$\sigma$")
+
+    fig.tight_layout()
+    plt.show()
+
+
+if __name__ == "__main__":
+    main()
