@@ -9,6 +9,7 @@ from typing import Tuple
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.contour import QuadContourSet
+from scipy.optimize import curve_fit
 from tqdm import tqdm
 from pulls import common
 
@@ -73,7 +74,20 @@ def _cartesian_plot(
         chi2s,
         levels=np.arange(n_levels),
     )
+    # Plot the true/generating value of Z
     ax.plot(*true_z, "y*")
+
+    # Plot a line for the best-fit points
+    best_fit_im = allowed_imz[np.argmin(chi2s, axis=0)]
+
+    def fit_fcn(x, a, b):
+        """
+        Straight line
+        """
+        return a + b * x
+
+    fit_params, _ = curve_fit(fit_fcn, allowed_rez, best_fit_im)
+    ax.plot(allowed_rez, fit_fcn(allowed_rez, *fit_params), "r--")
 
     ax.set_xlabel(r"Re(Z)")
     ax.set_ylabel(r"Im(Z)")
@@ -81,6 +95,16 @@ def _cartesian_plot(
     ax.set_title("Cartesian")
 
     return contours
+
+
+def _true_line_plot(ax: plt.Axes, params: util.ScanParams):
+    """
+    Plot the expected relationship between best-fit ReZ and ImZ
+
+    """
+    points = np.linspace(*ax.get_xlim())
+    expected = params.im_z + (params.y / params.x) * (params.re_z - points)
+    ax.plot(points, expected, "y", linewidth=1)
 
 
 def _polar_plot(
@@ -128,7 +152,7 @@ def main():
     correlation = 0.5
 
     chi2s = []
-    n_re, n_im = 75, 76
+    n_re, n_im = 50, 49
     allowed_rez = np.linspace(-1, 1, n_re)
     allowed_imz = np.linspace(-1, 1, n_im)
 
@@ -154,6 +178,8 @@ def main():
     contours = _cartesian_plot(
         ax[0], allowed_rez, allowed_imz, chi2s, n_contours, (params.re_z, params.im_z)
     )
+    _true_line_plot(ax[0], params)
+
     _polar_plot(
         ax[1], allowed_rez, allowed_imz, chi2s, n_contours, (params.re_z, params.im_z)
     )
@@ -163,6 +189,8 @@ def main():
     cbar_ax = fig.add_axes([0.85, 0.1, 0.05, 0.8])
     fig.colorbar(contours, cax=cbar_ax)
     cbar_ax.set_title(r"$\sigma$")
+
+    plt.savefig("scan.png")
 
     plt.show()
 
