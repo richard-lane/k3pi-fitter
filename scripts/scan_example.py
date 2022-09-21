@@ -168,8 +168,7 @@ def main():
     width = 0.005
     correlation = 0.5
 
-    chi2s = []
-    n_re, n_im = 50, 49
+    n_re, n_im = 100, 101
     allowed_rez = np.linspace(-1, 1, n_re)
     allowed_imz = np.linspace(-1, 1, n_im)
 
@@ -190,7 +189,7 @@ def main():
     chi2s -= np.min(chi2s)
     chi2s = np.sqrt(chi2s)
 
-    fig, ax = plt.subplots(1, 2, figsize=(10, 5))
+    fig, ax = plt.subplots(1, 2, figsize=(20, 10))
     n_contours = 7
     contours = _cartesian_plot(
         ax[0], allowed_rez, allowed_imz, chi2s, n_contours, (params.re_z, params.im_z)
