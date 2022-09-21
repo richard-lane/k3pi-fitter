@@ -9,6 +9,7 @@ from typing import Tuple
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.contour import QuadContourSet
+from matplotlib.patches import Patch
 from scipy.optimize import curve_fit
 from tqdm import tqdm
 from pulls import common
@@ -77,6 +78,10 @@ def _cartesian_plot(
     # Plot the true/generating value of Z
     ax.plot(*true_z, "y*")
 
+    # Plot the best-fit value of Z
+    min_im, min_re = np.unravel_index(chi2s.argmin(), chi2s.shape)
+    ax.plot(allowed_rez[min_re], allowed_imz[min_im], "r*")
+
     # Plot a line for the best-fit points
     best_fit_im = allowed_imz[np.argmin(chi2s, axis=0)]
 
@@ -93,6 +98,14 @@ def _cartesian_plot(
     ax.set_ylabel(r"Im(Z)")
     ax.add_patch(plt.Circle((0, 0), 1.0, color="k", fill=False))
     ax.set_title("Cartesian")
+
+    # Legend
+    ax.legend(
+        handles=[
+            Patch(facecolor="y", label="True"),
+            Patch(facecolor="r", label="Best-Fit"),
+        ]
+    )
 
     return contours
 
@@ -132,6 +145,10 @@ def _polar_plot(
         [np.arctan2(true_z[1], true_z[0])],
         "y*",
     )
+
+    # Plot best fit
+    min_im, min_re = np.unravel_index(chi2s.argmin(), chi2s.shape)
+    ax.plot(mag[min_im, min_re], phase[min_im, min_re], "r*")
 
     ax.set_xlabel(r"$|Z|$")
     ax.set_ylabel(r"arg(Z)")
