@@ -14,6 +14,27 @@ sys.path.append(str(pathlib.Path(__file__).resolve().parents[2]))
 from lib_time_fit import util, models
 
 
+def xy_vals(
+    gen: np.random.Generator,
+    num: int,
+    means: np.ndarray,
+    widths: np.ndarray,
+    correlation: float,
+) -> np.ndarray:
+    """
+    Randomly sample X and Y values from a correlated Gaussian
+
+    """
+    # Get the covariance matrix
+    cov = (
+        np.diag(widths)
+        @ np.array([[1.0, correlation], [correlation, 1.0]])
+        @ np.diag(widths)
+    )
+
+    return gen.multivariate_normal(means, cov, size=num)
+
+
 def gen_rs(
     rng: np.random.Generator,
     n_gen: int,
@@ -64,7 +85,7 @@ def gen_ws(
     retval = np.ones(num_ws) * np.nan
 
     def pdf(x):
-        """ not actually a pdf """
+        """not actually a pdf"""
         return models.no_constraints(x, *params) * np.exp(-x)
 
     max_pdf = pdf(fminbound(lambda x: -pdf(x), *domain))

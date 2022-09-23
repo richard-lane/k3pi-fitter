@@ -106,21 +106,14 @@ def main():
     """
     rng = np.random.default_rng()
 
-    n_rs = 6_000_00
+    n_rs = 6_000_000
     params = util.ConstraintParams(1.0, 0.06, 0.03, 0.01)
 
     # Generate some random values of X and Y to use
     widths = np.array([0.01, 0.01])
     correlation = 0.1
-    n_experiments = 100
-
-    corr = np.array([[1, correlation], [correlation, 1.0]])
-    cov = np.diag(widths) @ corr @ np.diag(widths)
-    xy_vals = rng.multivariate_normal(
-        (params.x, params.y),
-        cov,
-        size=n_experiments,
-    )
+    n_experiments = 20
+    xy_vals = common.xy_vals(rng, n_experiments, (params.x, params.y), widths, correlation)
 
     # Do a fit
     pulls = np.ones((4, n_experiments)) * np.nan
